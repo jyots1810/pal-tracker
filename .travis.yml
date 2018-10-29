@@ -4,11 +4,6 @@ notifications:
   email: false
 env:
   - RELEASE_TAG="release-$TRAVIS_BUILD_NUMBER"
-  - GITHUB_OAUTH_TOKEN=9aa8b2e504a7bb74dcec762b9214c3ba80a70ccc
-  - CF_API_URL=https://api.sys.pikes.pal.pivotal.io
-  - CF_USERNAME=Jyotsna.Srivastava2@T-Mobile.com
-  - CF_PASSWORD=nv2c88ku
-  - CF_ORG=jyotsna-jo
 if: tag IS blank
 
 
