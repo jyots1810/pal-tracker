@@ -1,26 +1,36 @@
 package io.pivotal.pal.tracker;
 
 import com.mysql.cj.api.jdbc.Statement;
-import com.mysql.cj.jdbc.MysqlDataSource;
 
 import java.sql.*;
 
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.PreparedStatementCreator;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 
 import javax.sql.DataSource;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 public class JdbcTimeEntryRepository implements TimeEntryRepository {
 
 
     private JdbcTemplate jdbcTemplate;
+    private RowMapper<TimeEntry> timeEntryRowMapper = new RowMapper<TimeEntry>() {
+        @Override
+        public TimeEntry mapRow(ResultSet rs, int rowNum) throws SQLException {
+            TimeEntry timeEntry = new TimeEntry();
+            timeEntry.setId(rs.getInt("ID"));
+            timeEntry.setDate(rs.getDate("DATE").toLocalDate());
+            timeEntry.setHours(rs.getInt("HOURS"));
+            timeEntry.setProjectId(rs.getInt("PROJECT_ID"));
+            timeEntry.setUserId(rs.getInt("USER_ID"));
+            return timeEntry;
+        }
+    };
 
     public JdbcTimeEntryRepository(DataSource dataSource) {
         this.jdbcTemplate = new JdbcTemplate(dataSource);
@@ -41,8 +51,6 @@ public class JdbcTimeEntryRepository implements TimeEntryRepository {
             }
         };
 
-
-
         final KeyHolder holder = new GeneratedKeyHolder();
         jdbcTemplate.update(psc,holder);
         timeEntry.setId(holder.getKey().longValue());
@@ -53,7 +61,10 @@ public class JdbcTimeEntryRepository implements TimeEntryRepository {
     public TimeEntry find(Long id) {
         TimeEntry result = null;
         try {
-            result = (TimeEntry) jdbcTemplate.queryForObject("Select * from time_entries where id = ?", new Object[]{id}, new TimeEntryRowMapper());
+            List<TimeEntry> timeEntries = jdbcTemplate.query("Select * from time_entries where id = ?", timeEntryRowMapper, id);
+            if(timeEntries != null && timeEntries.size() > 0) {
+                result = timeEntries.get(0);
+            }
         }
         catch(EmptyResultDataAccessException e) {}
         return result;
@@ -63,17 +74,7 @@ public class JdbcTimeEntryRepository implements TimeEntryRepository {
     public List<TimeEntry> list() {
         List<TimeEntry> result = new ArrayList<TimeEntry>();
         try {
-            List<Map<String, Object>> rows = jdbcTemplate.queryForList("Select * from time_entries");
-            rows.stream().forEach((row) -> {
-                TimeEntry timeEntry = new TimeEntry();
-                timeEntry.setId((long)row.get("id"));
-                timeEntry.setProjectId((long)row.get("project_id"));
-                timeEntry.setHours((int)row.get("hours"));
-                timeEntry.setDate(((Date)row.get("date")).toLocalDate());
-                timeEntry.setUserId((long)row.get("user_id"));
-                result.add(timeEntry);
-            });
-
+            result = jdbcTemplate.query("Select * from time_entries", timeEntryRowMapper);
         }
         catch(EmptyResultDataAccessException e) {}
         return result;
